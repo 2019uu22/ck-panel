@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لوحة المطابخ - CKs</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font:15px Tahoma,Arial,sans-serif;background:#eef2f7;color:#1d2733}
+  header{background:#1f4e78;color:#fff;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+  header b{font-size:17px} header small{opacity:.85;font-size:12px}
+  .wrap{max-width:640px;margin:0 auto;padding:10px}
+  .card{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  label{display:block;font-size:13px;color:#445;margin:8px 0 4px}
+  select,input{width:100%;padding:9px;border:1px solid #c9d3df;border-radius:8px;font-size:16px;background:#fff;font-family:inherit}
+  .r2{display:flex;gap:8px}.r2>*{flex:1}
+  .btn{display:block;width:100%;padding:12px;border:0;border-radius:8px;font-size:16px;cursor:pointer;margin-top:10px;font-family:inherit}
+  .go{background:#1f7a3f;color:#fff}.go:disabled{background:#9bb8a6}
+  .sec{background:#e8eef6;color:#1f4e78}
+  .modes{display:flex;gap:6px;margin-bottom:10px}
+  .mode{flex:1;padding:10px;border:1px solid #c9d3df;background:#fff;border-radius:8px;font-size:15px;cursor:pointer;font-family:inherit}
+  .mode.on{background:#1f4e78;color:#fff;border-color:#1f4e78}
+  table{width:100%;border-collapse:collapse}
+  td,th{padding:6px 3px;border-bottom:1px solid #eef1f5;vertical-align:middle}
+  th{font-size:12px;color:#556;font-weight:normal}
+  td.n{font-size:14px} td.n small{display:block;color:#888;font-size:12px;margin-top:2px}
+  td.n small.rem{color:#2e6b3a} td.n small.rem.neg{color:#c0392b;font-weight:bold}
+  td.q{width:96px} td.q input{text-align:center;padding:7px}
+  td.q input::placeholder{color:#b5bec8;opacity:1} td.q input.neg{border-color:#c0392b;background:#fdecea}
+  td.x{width:30px;text-align:center} td.x button,.dr button{border:0;background:none;color:#c0392b;font-size:20px;cursor:pointer}
+  tr.extra td.n{color:#8a5a00}
+  .dr{display:flex;gap:6px;margin-bottom:6px;align-items:center} .dr select{flex:3} .dr input{flex:1;text-align:center}
+  .hint{font-size:12px;color:#7a8794;margin-top:6px}
+  .st{padding:10px;border-radius:8px;font-size:14px;white-space:pre-line;margin-bottom:10px}
+  .st:empty{display:none}
+  .st.info{background:#fff8dc;border:1px solid #f0d97a}.st.ok{background:#e6f6ea;border:1px solid #8fd19e}.st.err{background:#fdecea;border:1px solid #f5a8a0}
+  td.b{width:72px;text-align:center} td.f{width:86px} td.f input{text-align:center;padding:7px}
+  td.d{width:70px;text-align:center;font-weight:bold} .plus{color:#1f7a3f}.minus{color:#c0392b}
+  tr.zero td{color:#9aa5b1}
+  .hidden{display:none!important}
+  a{color:#1f4e78}
+</style>
+</head>
+<body>
+<header><b id="title">لوحة المطابخ</b><small id="who"></small></header>
+<div class="wrap">
+  <div id="st" class="st"></div>
+
+  <!-- تسجيل الدخول -->
+  <div id="login" class="card">
+    <p>سجّل دخول بحساب جوجل اللي إلك فيه صلاحية على شيت المخزون.</p>
+    <button class="btn go" id="loginBtn">تسجيل الدخول بحساب جوجل</button>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="modes">
+      <button class="mode on" data-m="fill">تعبئة الاستهلاك</button>
+      <button class="mode" data-m="jard">مطابقة جرد</button>
+    </div>
+
+    <!-- تعبئة الاستهلاك -->
+    <div id="fill">
+      <div class="card">
+        <label>المطبخ</label><select id="kitchen"></select>
+        <label>اليوم</label><select id="date"></select>
+        <label>الطبخات وعدد القدور</label>
+        <div id="dishes"></div>
+        <div class="r2"><button class="btn sec" id="addDish" style="margin-top:0">+ طبخة ثانية</button><div class="hint" id="potsTotal" style="align-self:center"></div></div>
+        <div class="hint" id="dayinfo"></div>
+      </div>
+      <div class="card">
+        <table><tbody id="ftb"></tbody></table>
+        <label>إضافة صنف مش بالوصفة</label>
+        <div class="r2"><select id="addSel" style="flex:3"></select><button class="btn sec" id="addBtn" style="margin-top:0;flex:1">+ إضافة</button></div>
+        <button class="btn go" id="save">تعبئة</button>
+        <div class="hint">الكمية الجديدة أو المعدّلة بتنكتب، والصنف اللي شلته أو فضّيت خانته بتنمسح كميته من الشيت.</div>
+      </div>
+    </div>
+
+    <!-- مطابقة الجرد -->
+    <div id="jard" class="hidden">
+      <div class="card">
+        <label>المطبخ</label><select id="jKitchen"></select>
+        <div class="r2">
+          <div><label>التاريخ</label><input type="date" id="jDate"></div>
+          <div><label>وقت الجرد</label><select id="jWhen"><option value="before">قبل الطبخ</option><option value="after">بعد الطبخ</option></select></div>
+        </div>
+        <button class="btn sec" id="jCalc">احسب الرصيد</button>
+        <div class="hint" id="jInfo"></div>
+      </div>
+      <div class="card hidden" id="jCard">
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="jZero" style="width:auto"> أظهر الأصناف اللي رصيدها صفر</label>
+        <table><thead><tr><th>الصنف</th><th>الدفتري</th><th>الفعلي</th><th>الفرق</th></tr></thead><tbody id="jtb"></tbody></table>
+        <div class="hint" id="jSum"></div>
+        <button class="btn go" id="jSave">حفظ المطابقة بشيت على الدرايف</button>
+        <div class="hint" id="jLink"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ================== الإعدادات ================== */
+const CFG = {
+  // من Google Cloud: OAuth Client ID (نوع Web application)
+  CLIENT_ID: 'ضع_هون_CLIENT_ID.apps.googleusercontent.com',
+  // شيت المخزون. للتجربة على نسخة: افتح الصفحة وبآخر الرابط ?sheet=رقم_النسخة
+  SHEET_ID: '1m-uacaBqdSeX2SgUwoFlsl7FuLlQfzBDRDoVSvSfBFc',
+  // شيت الوصفات (منشور CSV)
+  RECIPES_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRKHGgrtYVMD3nemN5g1QXxsJc9pAcETbinyAL6WNqldRk8uDcgCa-WBJJUSv1Es68DslP3h-zSCuMh/pub?output=csv',
+  TEAM: 'الفريق',
+  SUPPLY: 'إدخال التوريد',      // A تاريخ، C النوع، D المطبخ، E من مطبخ، F الصنف، G الكمية
+  DAMAGE_PREFIX: 'تالف - ',     // A تاريخ، B المطبخ، C الصنف، E الكمية
+  LOCK_NAME: 'حماية تلقائية - نطاق المستهلكات المُدخلة',
+  ROW_STATUS: 2, ROW_POTS: 3, ROW_MEAL1: 4, ROW_MEAL2: 5, ROW_DATES: 7, ROW_FIRST_ITEM: 8,
+  COL_FIRST_DAY: 7 // G
+};
+const qs = new URLSearchParams(location.search);
+if (qs.get('sheet')) CFG.SHEET_ID = qs.get('sheet');
+const SCOPES = 'openid email https://www.googleapis.com/auth/spreadsheets';
+
+/* ================== أدوات ================== */
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const norm = s => String(s == null ? '' : s).replace(/[\s ]+/g, ' ').replace(/[’'`]/g, '').trim().toLowerCase();
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem('ckw_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('ckw_' + k, JSON.stringify(v)); } catch (e) {} }
+};
+function status(msg, kind) { const s = $('st'); s.className = 'st ' + (kind || 'info'); s.textContent = msg || ''; if (msg && s.scrollIntoView) s.scrollIntoView({ block: 'nearest' }); }
+function el(t, a, txt) { const e = document.createElement(t); Object.entries(a || {}).forEach(([k, v]) => e.setAttribute(k, v)); if (txt != null) e.textContent = txt; return e; }
+const opt = (sel, v, t) => sel.appendChild(el('option', { value: v }, t));
+function num(x) { if (typeof x === 'number') return isFinite(x) ? x : null; const t = String(x == null ? '' : x).replace(/[,\s ]/g, ''); if (t === '') return null; const v = Number(t); return isFinite(v) ? v : null; }
+const fmtN = x => String(Math.round(x * 1000) / 1000);
+function colLetter(n) { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
+function colNum(c) { return c.split('').reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0); }
+function dayStr(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+const todayStr = () => dayStr(new Date());
+function fmtDay(s) { const [y, m, d] = s.split('-'); return Number(d) + '/' + Number(m) + '/' + y; }
+function serialToDay(n) { const d = new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
+// تاريخ من الشيت: رقم (تاريخ حقيقي) أو نص بأكثر من صيغة. بيرجع { d, alt }
+function anyDate(raw) {
+  if (typeof raw === 'number') return raw > 20000 && raw < 80000 ? { d: serialToDay(raw) } : null;
+  const t = String(raw || '').trim(); if (!t) return null;
+  const p2 = x => ('0' + x).slice(-2);
+  const ok = (y, m, d) => m >= 1 && m <= 12 && d >= 1 && d <= 31 ? y + '-' + p2(m) + '-' + p2(d) : null;
+  let m;
+  if ((m = t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/))) { // يوم/شهر/سنة
+    const a = +m[1], b = +m[2]; const d1 = ok(m[3], b, a), d2 = ok(m[3], a, b);
+    return d1 ? { d: d1 } : d2 ? { d: d2 } : null;
+  }
+  if ((m = t.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})/))) { // سنة/يوم/شهر (هيك مكتوبة بالسجلات النصية)
+    const a = +m[2], b = +m[3]; const d1 = ok(m[1], b, a), d2 = ok(m[1], a, b);
+    return d1 ? { d: d1, alt: a <= 12 && b <= 12 && a !== b ? d2 : null } : d2 ? { d: d2 } : null;
+  }
+  return null;
+}
+const dateOf = raw => { const x = anyDate(raw); return x ? x.d : ''; };
+function parseCSV(text) {
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true; else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; } else if (ch !== '\r') cur += ch;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+const sq = t => "'" + String(t).replace(/'/g, "''") + "'"; // اسم تبويب بالنطاق
+
+/* ================== تسجيل الدخول و API ================== */
+let token = null, tokenExp = 0, tokenClient = null, pendingToken = null;
+function initAuth() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CFG.CLIENT_ID, scope: SCOPES,
+    callback: r => {
+      const p = pendingToken; pendingToken = null;
+      if (r.error) return p && p.reject(new Error('ما زبط تسجيل الدخول: ' + r.error));
+      token = r.access_token; tokenExp = Date.now() + (r.expires_in - 120) * 1000;
+      p && p.resolve(token);
+    },
+    error_callback: e => { const p = pendingToken; pendingToken = null; p && p.reject(new Error('انلغى تسجيل الدخول.')); }
+  });
+}
+function getToken(interactive) {
+  if (token && Date.now() < tokenExp) return Promise.resolve(token);
+  if (!interactive && !pendingToken) return Promise.reject(new Error('انتهت جلسة الدخول. اكبس "تسجيل الدخول" مرة ثانية.'));
+  if (pendingToken && !interactive) return new Promise((resolve, reject) => { const p = pendingToken; pendingToken = { resolve: t => { p.resolve(t); resolve(t); }, reject: e => { p.reject(e); reject(e); } }; });
+  return new Promise((resolve, reject) => {
+    pendingToken = { resolve, reject };
+    tokenClient.requestAccessToken({ prompt: '', hint: LS.get('email', '') || undefined });
+  });
+}
+class ApiError extends Error { constructor(msg, code) { super(msg); this.code = code; } }
+async function api(url, opts = {}, retry = true) {
+  const t = await getToken(false);
+  const r = await fetch(url, { ...opts, headers: { ...(opts.headers || {}), Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' } });
+  if (r.status === 401 && retry) { token = null; return api(url, opts, false); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const m = (j.error && j.error.message) || ('خطأ ' + r.status);
+    if (r.status === 403 && /protected|محمي/i.test(m)) throw new ApiError('locked', 'locked');
+    if (r.status === 403) throw new ApiError('ما إلك صلاحية على شيت المخزون بهالحساب. (' + m + ')', 403);
+    throw new ApiError(m, r.status);
+  }
+  return j;
+}
+const SAPI = 'https://sheets.googleapis.com/v4/spreadsheets/';
+async function getValues(ranges, render) {
+  const u = SAPI + CFG.SHEET_ID + '/values:batchGet?' + ranges.map(r => 'ranges=' + encodeURIComponent(r)).join('&') +
+    '&valueRenderOption=' + (render || 'UNFORMATTED_VALUE') + '&dateTimeRenderOption=SERIAL_NUMBER';
+  const j = await api(u);
+  return (j.valueRanges || []).map(v => v.values || []);
+}
+async function getMeta() {
+  return api(SAPI + CFG.SHEET_ID + '?fields=' + encodeURIComponent('sheets(properties(sheetId,title),protectedRanges(description,range))'));
+}
+
+/* ================== بيانات ================== */
+let D = null; // { user, kitchens, recipes, dishes, meta }
+async function loadAll() {
+  const ui = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + await getToken(false) } }).then(r => r.json());
+  const email = norm(ui.email); LS.set('email', ui.email || '');
+  const [meta, team] = await Promise.all([getMeta(), getValues([sq(CFG.TEAM) + '!A2:Q400'], 'FORMATTED_VALUE')]);
+  const rows = team[0];
+  const me = rows.find(r => norm(r[2]) === email);
+  if (!me) throw new Error('إيميلك (' + ui.email + ') مش مسجّل بتبويب الفريق. كلّم المدير.');
+  if (norm(me[5]) === 'لا') throw new Error('حسابك موقوف بتبويب الفريق.');
+  const user = { name: String(me[0] || '').trim(), role: String(me[1] || '').trim(), email: ui.email };
+  const nm = norm(user.name), kitchens = [];
+  rows.forEach(r => {
+    const name = String(r[11] || '').trim(); if (!name) return;
+    const m1 = norm(r[12]), m2 = norm(r[13]), co = norm(r[14]);
+    const ok = user.role === 'مدير' || (user.role === 'منسق' ? (co === nm || m1 === nm || m2 === nm) : (m1 === nm || m2 === nm));
+    if (ok) kitchens.push({ name, status: String(r[16] || '').trim() });
+  });
+  const rec = await loadRecipes();
+  D = { user, kitchens, recipes: rec.map, dishes: rec.order, meta, tabs: {} };
+}
+async function loadRecipes() {
+  const map = {}, order = [];
+  let t;
+  try { t = await (await fetch(CFG.RECIPES_URL + '&_=' + Date.now(), { cache: 'no-store' })).text(); }
+  catch (e) { throw new Error('ما قدرت أقرأ شيت الوصفات.'); }
+  parseCSV(t).slice(1).forEach(r => {
+    const dish = (r[0] || '').trim(), item = (r[1] || '').trim(); if (!dish || !item) return;
+    if (!map[dish]) { map[dish] = []; order.push(dish); }
+    const p = num(r[2]); map[dish].push({ item, perPot: p > 0 ? p : null });
+  });
+  return { map, order };
+}
+const sheetTitles = () => D.meta.sheets.map(s => s.properties.title);
+async function kitchenTab(kitchen) {
+  if (D.tabs[kitchen]) return D.tabs[kitchen];
+  const k = norm(kitchen), titles = sheetTitles();
+  let t = titles.find(n => norm(n) === k);
+  if (!t) {
+    const cks = titles.filter(n => /^ck/i.test(n));
+    const a1 = await getValues(cks.map(n => sq(n) + '!A1'), 'FORMATTED_VALUE');
+    const i = a1.findIndex(v => norm(v[0] && v[0][0]) === k); if (i >= 0) t = cks[i];
+  }
+  if (!t) throw new Error('ما لقيت تبويب لمطبخ "' + kitchen + '".');
+  return (D.tabs[kitchen] = t);
+}
+// آخر عمود مقفول بالحماية التلقائية (رقم عمود، 0 = ولا عمود)
+function lockedUntil(meta, tab) {
+  const sh = meta.sheets.find(s => s.properties.title === tab); if (!sh) return 0;
+  let end = 0;
+  (sh.protectedRanges || []).forEach(p => { if (p.description === CFG.LOCK_NAME && p.range && p.range.endColumnIndex) end = Math.max(end, p.range.endColumnIndex); });
+  return end;
+}
+// صفحة المطبخ كاملة: التواريخ والأصناف والمتبقي وكل الأيام
+async function readKitchen(tab) {
+  const [v] = await getValues([sq(tab) + '!A1:ZZ400']);
+  const row = r => v[r - 1] || [];
+  const dates = [];
+  row(CFG.ROW_DATES).forEach((x, i) => { if (i + 1 >= CFG.COL_FIRST_DAY) { const d = dateOf(x); if (d) dates.push({ d, col: i + 1 }); } });
+  const items = [];
+  for (let r = CFG.ROW_FIRST_ITEM; r <= v.length; r++) {
+    const name = String(row(r)[1] == null ? '' : row(r)[1]).trim(); if (!name) continue;
+    items.push({ name, row: r, unit: String(row(r)[0] || '').trim(), remain: num(row(r)[4]), cells: row(r) });
+  }
+  return { v, row, dates, items };
+}
+
+/* ================== تعبئة الاستهلاك ================== */
+let day = null, rows = [], dishes = [{ name: '', pots: '' }];
+async function refreshDates() {
+  const k = $('kitchen').value, sel = $('date'), cur = sel.value;
+  day = null; $('save').disabled = true; sel.replaceChildren(); rows = []; render();
+  status('جاري قراءة الأيام المفتوحة…', 'info');
+  try {
+    const tab = await kitchenTab(k);
+    D.meta = await getMeta();
+    const lock = lockedUntil(D.meta, tab), K = await readKitchen(tab);
+    const today = todayStr(), y = new Date(); y.setDate(y.getDate() - 1);
+    const days = K.dates.filter(x => x.col > lock && x.d <= today).sort((a, b) => b.d.localeCompare(a.d));
+    if ($('kitchen').value !== k) return;
+    days.forEach(x => opt(sel, x.d, fmtDay(x.d) + (x.d === today ? ' (اليوم)' : x.d === dayStr(y) ? ' (امبارح)' : '')));
+    if (!days.length) { $('dayinfo').textContent = ''; return status('ما في ولا يوم مفتوح للتعديل بمطبخ ' + k + '. يا إمّا كل الأيام انقفلت، يا إمّا يوم اليوم لسا مش مضاف بصف التواريخ.', 'err'); }
+    sel.value = days.some(x => x.d === cur) ? cur : days[0].d;
+    await reloadDay();
+  } catch (e) { status('❌ ' + e.message, 'err'); }
+}
+async function loadDay(kitchen, dateStr) {
+  const tab = await kitchenTab(kitchen), K = await readKitchen(tab);
+  const dc = K.dates.find(x => x.d === dateStr);
+  if (!dc) throw new Error('يوم ' + fmtDay(dateStr) + ' مش موجود بصف التواريخ.');
+  const ci = dc.col - 1, values = {};
+  K.items.forEach(x => { const q = x.cells[ci]; if (q !== undefined && q !== null && q !== '') values[norm(x.name)] = q; });
+  const g = r => { const x = K.row(r)[ci]; return x == null ? '' : String(x).trim(); };
+  return { kitchen, tab, date: dateStr, col: colLetter(dc.col), colNum: dc.col, items: K.items, values,
+    status: g(CFG.ROW_STATUS), pots: g(CFG.ROW_POTS), meal1: g(CFG.ROW_MEAL1), meal2: g(CFG.ROW_MEAL2) };
+}
+async function reloadDay() {
+  const k = $('kitchen').value, dt = $('date').value; if (!k || !dt) return;
+  day = null; $('save').disabled = true; status('جاري قراءة يوم ' + fmtDay(dt) + '…', 'info');
+  try {
+    day = await loadDay(k, dt);
+    const names = [day.meal1].concat(String(day.meal2 || '').split('+')).map(x => String(x || '').trim()).filter(Boolean);
+    dishes = names.length ? names.map(n => ({ name: D.dishes.find(d => norm(d) === norm(n)) || n, pots: '' })) : [{ name: '', pots: '' }];
+    if (dishes.length === 1 && day.pots !== '') dishes[0].pots = day.pots;
+    const a = $('addSel'); a.replaceChildren(); opt(a, '', '— اختار صنف —'); day.items.forEach(x => opt(a, x.name, x.name));
+    const filled = Object.keys(day.values).length;
+    $('dayinfo').textContent = (day.status ? 'حالة المطبخ: ' + day.status + '. ' : '') + 'العمود ' + day.col + ' بتبويب ' + day.tab + '.' + (filled ? ' في ' + filled + ' صنف معبّى من قبل بهاليوم.' : '');
+    status('', ''); $('save').disabled = false;
+    renderDishes(true);
+  } catch (e) { status('❌ ' + e.message, 'err'); }
+}
+const potsTotal = () => dishes.reduce((a, d) => a + (Number(d.pots) > 0 ? Number(d.pots) : 0), 0);
+function renderDishes(fromDay) {
+  const box = $('dishes'); box.replaceChildren();
+  dishes.forEach((d, i) => {
+    const sel = el('select'); opt(sel, '', i ? '— اختار طبخة —' : '— اختار الطبخة —');
+    D.dishes.forEach(x => opt(sel, x, x));
+    if (d.name && !D.dishes.includes(d.name)) opt(sel, d.name, d.name + ' (مش بالوصفات)');
+    sel.value = d.name; sel.onchange = () => { d.name = sel.value; buildRows(false); };
+    const inp = el('input', { type: 'number', step: 'any', min: '0', placeholder: 'قدور', inputmode: 'decimal' });
+    inp.value = d.pots; inp.oninput = () => { d.pots = inp.value; showTotal(); autoFill(); };
+    const row = el('div', { class: 'dr' }); row.append(sel, inp);
+    if (dishes.length > 1) { const x = el('button', { title: 'شيل الطبخة' }, '×'); x.onclick = () => { dishes.splice(i, 1); renderDishes(); }; row.append(x); }
+    box.append(row);
+  });
+  showTotal(); buildRows(!!fromDay);
+}
+function showTotal() {
+  const t = potsTotal(), sheet = day && day.pots !== '' && dishes.length > 1 && !t ? ' (بالشيت: ' + day.pots + ')' : '';
+  $('potsTotal').textContent = dishes.length > 1 || sheet ? 'مجموع القدور: ' + (t || '—') + sheet : '';
+}
+function addRow(item, qty, perPot, extra, dish) {
+  let r = rows.find(r => norm(r.item) === norm(item));
+  if (!r) { r = { item, qty: qty == null ? '' : qty, parts: [], extra: !!extra, touched: qty !== '' && qty != null }; rows.push(r); }
+  if (dish) { r.extra = false; if (!r.parts.some(p => p.dish === dish)) r.parts.push({ dish, perPot }); }
+}
+function buildRows(fromDay) {
+  const keep = rows.filter(r => r.touched || r.extra);
+  rows = [];
+  dishes.forEach(d => (D.recipes[d.name] || []).forEach(x => addRow(x.item, '', x.perPot, false, d.name)));
+  if (fromDay && day) {
+    rows.forEach(r => { const v = day.values[norm(r.item)]; if (v !== undefined) { r.qty = v; r.touched = true; } });
+    day.items.forEach(x => { const v = day.values[norm(x.name)]; if (v !== undefined) addRow(x.name, v, null, true); });
+  } else {
+    rows.forEach(r => { const o = keep.find(o => norm(o.item) === norm(r.item) && String(o.qty).trim() !== ''); if (o) { r.qty = o.qty; r.touched = true; } });
+    if (day) day.items.forEach(x => {
+      const v = day.values[norm(x.name)]; if (v === undefined) return;
+      const r = rows.find(r => norm(r.item) === norm(x.name));
+      if (r) { if (!r.touched) { r.qty = v; r.touched = true; } }
+      else { const o = keep.find(o => norm(o.item) === norm(x.name)); addRow(x.name, o && String(o.qty).trim() !== '' ? o.qty : v, null, true); }
+    });
+  }
+  autoFill();
+}
+function autoFill() {
+  const potsOf = name => { const d = dishes.find(d => d.name === name); return d && Number(d.pots) > 0 ? Number(d.pots) : 0; };
+  const multi = dishes.filter(d => d.name).length > 1;
+  rows.forEach(r => {
+    const ps = (r.parts || []).filter(p => p.perPot);
+    const tot = ps.reduce((a, p) => a + p.perPot * potsOf(p.dish), 0);
+    r.hint = tot > 0 ? Math.round(tot * 1000) / 1000 : '';
+    r.hintText = !ps.length ? '' : 'الوصفة: ' + (tot > 0
+      ? r.hint + ' (' + ps.filter(p => potsOf(p.dish)).map(p => (multi ? p.dish + ' ' : '') + p.perPot + '×' + potsOf(p.dish)).join(' + ') + ')'
+      : ps.map(p => (multi ? p.dish + ' ' : '') + p.perPot).join(' + ') + ' لكل قدر');
+  });
+  render();
+}
+// المتاح لهاليوم = المتبقي + الكمية اللي كانت معبّاة بهاليوم
+function stockCheck(r, d) {
+  d = d || day; if (!d) return null;
+  const it = d.items.find(x => norm(x.name) === norm(r.item));
+  if (!it || it.remain == null) return null;
+  const old = num(d.values[norm(r.item)]) || 0;
+  const v = String(r.qty == null ? '' : r.qty).trim() === '' ? null : num(r.qty);
+  if (v == null) return { text: 'المتبقي: ' + fmtN(it.remain), neg: false };
+  const after = it.remain + old - v;
+  return { text: 'المتبقي: ' + fmtN(it.remain) + ' ← بعد التعبئة: ' + fmtN(after) + (after < 0 ? ' ⛔ رح يصير بالسالب' : ''), neg: after < -1e-9, avail: it.remain + old };
+}
+function render() {
+  const tb = $('ftb'); tb.replaceChildren();
+  const known = day ? new Set(day.items.map(x => norm(x.name))) : null;
+  rows.forEach((r, i) => {
+    const tr = el('tr', r.extra ? { class: 'extra' } : {});
+    const n = el('td', { class: 'n' }, r.item);
+    const sub = [];
+    if (r.hintText) sub.push(r.hintText);
+    if (r.extra) sub.push('مش بالوصفة');
+    if (known && !known.has(norm(r.item))) sub.push('⚠️ مش موجود بصفحة المطبخ');
+    if (sub.length) n.appendChild(el('small', null, sub.join(' · ')));
+    const remEl = el('small', { class: 'rem' }); n.appendChild(remEl);
+    const q = el('td', { class: 'q' }); const inp = el('input', { type: 'number', step: 'any', min: '0', inputmode: 'decimal' });
+    const showRem = () => { const c = stockCheck(r); remEl.textContent = c ? c.text : ''; remEl.className = 'rem' + (c && c.neg ? ' neg' : ''); inp.classList.toggle('neg', !!(c && c.neg)); };
+    inp.value = r.qty; if (r.hint !== '' && r.hint != null) inp.placeholder = r.hint;
+    inp.oninput = () => { r.qty = inp.value; r.touched = true; showRem(); }; q.appendChild(inp); showRem();
+    const x = el('td', { class: 'x' }); const b = el('button', { title: 'شيل' }, '×');
+    b.onclick = () => {
+      if (day && day.values[norm(r.item)] !== undefined && !confirm('"' + r.item + '" إله كمية ' + day.values[norm(r.item)] + ' بالشيت. لما تكبس تعبئة، كميته رح تنمسح. تكمّل؟')) return;
+      rows.splice(i, 1); render();
+    }; x.appendChild(b);
+    tr.append(n, q, x); tb.appendChild(tr);
+  });
+}
+async function save() {
+  if (!day) return;
+  const names = dishes.map(d => d.name).filter(Boolean);
+  if (!names.length) return status('اختار الطبخة أول.', 'err');
+  if (new Set(names).size !== names.length) return status('في طبخة مكرّرة. شيلها أو اجمع قدورها بسطر واحد.', 'err');
+  const k = $('kitchen').value, dt = $('date').value;
+  if (k !== day.kitchen || dt !== day.date) return status('استنّى لحد ما يخلص تحميل اليوم.', 'info');
+  const byName = {}; day.items.forEach(x => { byName[norm(x.name)] = x.row; });
+  const cells = {}, missing = [], bad = [], clears = [];
+  rows.forEach(r => {
+    const v = String(r.qty == null ? '' : r.qty).trim().replace(',', '.');
+    if (v === '') return;
+    if (num(v) == null) return bad.push(r.item);
+    const row = byName[norm(r.item)]; if (!row) return missing.push(r.item);
+    if (String(day.values[norm(r.item)] == null ? '' : day.values[norm(r.item)]) !== v) cells[row] = num(v);
+  });
+  day.items.forEach(x => {
+    if (day.values[norm(x.name)] === undefined) return;
+    const r = rows.find(r => norm(r.item) === norm(x.name));
+    if (!r || String(r.qty == null ? '' : r.qty).trim() === '') clears.push(x.row);
+  });
+  if (bad.length) return status('في كميات مش أرقام: ' + bad.join('، '), 'err');
+  const negs = rows.filter(r => { const c = stockCheck(r); return c && c.neg; });
+  if (negs.length) return status('⛔ ما تعبّى إشي. هالأصناف رح تصير بالسالب:\n' + negs.map(r => '• ' + r.item.split('||').pop().trim() + ': كتبت ' + r.qty + '، والمتاح ' + fmtN(stockCheck(r).avail)).join('\n'), 'err');
+  const head = {};
+  const pots = potsTotal() ? Math.round(potsTotal() * 1000) / 1000 : '';
+  if (pots !== '' && String(pots) !== String(day.pots)) head[CFG.ROW_POTS] = pots;
+  const meal1 = names[0], meal2 = names.slice(1).join(' + ');
+  if (meal1 !== day.meal1) head[CFG.ROW_MEAL1] = meal1;
+  if (meal2 && meal2 !== day.meal2) head[CFG.ROW_MEAL2] = meal2;
+  if (!meal2 && day.meal2) clears.push(CFG.ROW_MEAL2);
+  const nW = Object.keys(cells).length, itemClears = clears.filter(r => r >= CFG.ROW_FIRST_ITEM);
+  if (!nW && !Object.keys(head).length && !clears.length) return status('ما في إشي جديد تتعبّى.' + (missing.length ? '\n⚠️ مش موجودين بصفحة المطبخ: ' + missing.join('، ') : ''), 'info');
+  const delNames = itemClears.map(r => day.items.find(x => x.row === r).name.split('||').pop().trim());
+  if (!confirm('بعمود ' + day.col + ' (' + fmtDay(dt) + ') بتبويب ' + day.tab + ':\n• رح تنكتب/تتعدّل ' + nW + ' كمية' + (itemClears.length ? '\n• رح تنمسح كمية ' + itemClears.length + ' صنف: ' + delNames.join('، ') : '') + '\nتكمّل؟')) return;
+  $('save').disabled = true; status('جاري التعبئة…', 'info');
+  try {
+    // تأكيد قبل الكتابة: القفل، ومكان العمود والصفوف، والمتبقي هلأ
+    const meta = await getMeta(); D.meta = meta;
+    if (day.colNum <= lockedUntil(meta, day.tab) || dt > todayStr()) throw new ApiError('locked', 'locked');
+    const fresh = await loadDay(k, dt);
+    if (fresh.col !== day.col) throw new Error('عمود اليوم تغيّر بالشيت. ما كتبت إشي، جرّب كمان مرة.');
+    for (const row of Object.keys(cells).map(Number).concat(itemClears)) {
+      const a = day.items.find(x => x.row === row), b = fresh.items.find(x => x.row === row);
+      if (!b || norm(a.name) !== norm(b.name)) throw new Error('ترتيب الأصناف تغيّر بالشيت. ما كتبت إشي، جرّب كمان مرة.');
+    }
+    const negNow = rows.filter(r => { const c = stockCheck(r, fresh); return c && c.neg; });
+    if (negNow.length) { day = fresh; render(); throw new Error('المتبقي تغيّر بالشيت، وهالأصناف رح تصير بالسالب: ' + negNow.map(r => r.item.split('||').pop().trim()).join('، ') + '. ما كتبت إشي.'); }
+    const T = sq(day.tab) + '!', C = day.col;
+    const data = Object.entries(Object.assign({}, head, cells)).map(([r, v]) => ({ range: T + C + r, values: [[v]] }));
+    if (data.length) await api(SAPI + CFG.SHEET_ID + '/values:batchUpdate', { method: 'POST', body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data }) });
+    if (clears.length) await api(SAPI + CFG.SHEET_ID + '/values:batchClear', { method: 'POST', body: JSON.stringify({ ranges: clears.map(r => T + C + r) }) });
+    status('✅ تم بعمود ' + day.col + ' (' + fmtDay(dt) + '): ' + nW + ' كمية انكتبت' + (itemClears.length ? '، و' + itemClears.length + ' انمسحت' : '') + '.' +
+      (missing.length ? '\n⚠️ مش موجودين بصفحة المطبخ: ' + missing.join('، ') : ''), missing.length ? 'info' : 'ok');
+    day = await loadDay(k, dt); render();
+  } catch (e) {
+    if (e.code === 'locked') { status('⛔ لا يمكن التعديل على يوم ' + fmtDay(dt) + '. العمود مقفل، أو ما إلك صلاحية تعدّل عليه.\nإذا لازم تعديل، كلّم المنسق أو المدير.', 'err'); refreshDates(); }
+    else status('❌ ' + e.message, 'err');
+  } finally { $('save').disabled = false; }
+}
+
+/* ================== مطابقة الجرد (قراءة بس) ================== */
+let J = null;
+// الرصيد بتاريخ = المتبقي هلأ - التوريد بعد التاريخ + التالف بعد التاريخ + الاستهلاك بعد التاريخ
+async function jardCompute(kitchen, date, when) {
+  const cut = when === 'before' ? (() => { const d = new Date(date + 'T12:00:00'); d.setDate(d.getDate() - 1); return dayStr(d); })() : date;
+  const tab = await kitchenTab(kitchen), kn = norm(kitchen), today = todayStr();
+  const recAfter = {}, damAfter = {}, bad = [], notes = [];
+  const add = (m, k, v) => { k = norm(k); if (k) m[k] = (m[k] || 0) + v; };
+  const take = (src, n, raw, m, item, v) => {
+    const dd = anyDate(raw);
+    const label = src + ' (صف ' + n + '): ' + String(item || '').split('||').pop().trim() + ' ' + (v == null ? '؟' : v) + ' — ' + (typeof raw === 'number' && dd ? fmtDay(dd.d) : (raw || 'بدون تاريخ'));
+    if (!dd || v == null) { bad.push(label); return; }
+    if (dd.d > today) { // تاريخ بالمستقبل = غالباً اليوم والشهر مقلوبين
+      const [y, mo, da] = dd.d.split('-'), sw = +da <= 12 ? y + '-' + da + '-' + mo : null;
+      if (sw && sw <= today) { notes.push(label + ' ← اعتبرته ' + fmtDay(sw)); dd.d = sw; dd.alt = null; }
+      else { bad.push(label + ' (تاريخ بالمستقبل)'); return; }
+    }
+    if (dd.alt && (dd.d > cut) !== (dd.alt > cut)) bad.push(label + ' (التاريخ مش واضح يوم/شهر)');
+    if (dd.d > cut) add(m, item, v);
+  };
+  const titles = sheetTitles(), dmg = titles.filter(n => n.startsWith(CFG.DAMAGE_PREFIX));
+  const ranges = [];
+  if (titles.includes(CFG.SUPPLY)) ranges.push(sq(CFG.SUPPLY) + '!A2:G');
+  dmg.forEach(t => ranges.push(sq(t) + '!A2:E'));
+  const res = await getValues(ranges);
+  let i = 0;
+  if (titles.includes(CFG.SUPPLY)) {
+    res[i++].forEach((r, j) => {
+      const v = num(r[6]);
+      if (norm(r[3]) === kn) take(CFG.SUPPLY, j + 2, r[0], recAfter, r[5], v);
+      if (String(r[2] || '').trim() === 'تحويل' && norm(r[4]) === kn) take(CFG.SUPPLY, j + 2, r[0], recAfter, r[5], v == null ? null : -v);
+    });
+  }
+  dmg.forEach(t => res[i++].forEach((r, j) => { if (norm(r[1]) === kn) take(t, j + 2, r[0], damAfter, r[2], num(r[4])); }));
+  const K = await readKitchen(tab);
+  const after = K.dates.filter(x => x.d > cut);
+  const items = K.items.map(x => {
+    let used = 0; after.forEach(a => { used += num(x.cells[a.col - 1]) || 0; });
+    const k = norm(x.name);
+    const book = x.remain == null ? null : x.remain - (recAfter[k] || 0) + (damAfter[k] || 0) + used;
+    return { name: x.name, unit: x.unit, book: book == null ? 0 : Math.round(book * 1000) / 1000, noBook: x.remain == null, actual: '' };
+  });
+  return { kitchen, tab, date, when, cut, items, bad, notes };
+}
+async function jardCalc() {
+  const kitchen = $('jKitchen').value, date = $('jDate').value, when = $('jWhen').value;
+  if (!kitchen || !date) return status('اختار المطبخ والتاريخ.', 'err');
+  if (date > todayStr()) return status('التاريخ لازم يكون اليوم أو قبل.', 'err');
+  $('jCalc').disabled = true; status('جاري حساب الرصيد…', 'info');
+  try {
+    J = await jardCompute(kitchen, date, when);
+    $('jInfo').textContent = (when === 'before' ? 'الرصيد بنهاية يوم ' + fmtDay(J.cut) + ' (قبل طبخ ' + fmtDay(date) + ')' : 'الرصيد بنهاية يوم ' + fmtDay(date) + ' (بعد الطبخ)');
+    $('jCard').classList.remove('hidden'); $('jLink').textContent = '';
+    let msg = '';
+    if (J.bad.length) msg += '⚠️ في ' + J.bad.length + ' حركة توريد/تالف ما قدرت أعرف تاريخها أو كميتها، فما انحسبت:\n' + J.bad.slice(0, 5).join('\n') + (J.bad.length > 5 ? '\n…' : '');
+    if (J.notes.length) msg += (msg ? '\n' : '') + 'ℹ️ تواريخ بالمستقبل اعتبرتها مقلوبة:\n' + J.notes.slice(0, 5).join('\n') + (J.notes.length > 5 ? '\n…' : '');
+    if (J.items.some(x => x.noBook)) msg += (msg ? '\n' : '') + '⚠️ في أصناف عمود "الكمية المتبقية" فاضي إلها، فرصيدها انحسب صفر.';
+    status(msg, msg ? 'info' : '');
+    jardRender();
+  } catch (e) { status('❌ ' + e.message, 'err'); }
+  finally { $('jCalc').disabled = false; }
+}
+function jardRender() {
+  if (!J) return;
+  const tb = $('jtb'); tb.replaceChildren();
+  const showZero = $('jZero').checked;
+  J.items.forEach(it => {
+    if (!showZero && !it.book && String(it.actual).trim() === '') return;
+    const tr = el('tr', !it.book ? { class: 'zero' } : {});
+    const n = el('td', { class: 'n' }, it.name); if (it.unit) n.appendChild(el('small', null, it.unit));
+    const b = el('td', { class: 'b' }, fmtN(it.book));
+    const f = el('td', { class: 'f' }); const inp = el('input', { type: 'number', step: 'any', min: '0', inputmode: 'decimal' }); inp.value = it.actual; f.appendChild(inp);
+    const d = el('td', { class: 'd' });
+    const upd = () => {
+      it.actual = inp.value; const a = String(inp.value).trim() === '' ? null : num(inp.value);
+      if (a == null) { d.textContent = ''; d.className = 'd'; }
+      else { const x = a - it.book; d.textContent = (x > 0 ? '+' : '') + fmtN(x); d.className = 'd ' + (x > 1e-9 ? 'plus' : x < -1e-9 ? 'minus' : ''); }
+      jardSum();
+    };
+    inp.oninput = upd; upd();
+    tr.append(n, b, f, d); tb.appendChild(tr);
+  });
+  jardSum();
+}
+function jardSum() {
+  if (!J) return; let done = 0, plus = 0, minus = 0, eq = 0;
+  J.items.forEach(it => { if (String(it.actual).trim() === '') return; done++; const x = num(it.actual) - it.book; if (x > 0.0005) plus++; else if (x < -0.0005) minus++; else eq++; });
+  $('jSum').textContent = 'عبّيت ' + done + ' صنف: ' + eq + ' مطابق، ' + plus + ' زيادة، ' + minus + ' نقص.';
+}
+async function jardSave() {
+  if (!J) return;
+  const filled = J.items.filter(it => String(it.actual).trim() !== '');
+  if (!filled.length) return status('عبّي الكمية الفعلية لصنف واحد على الأقل.', 'err');
+  if (filled.some(it => num(it.actual) == null)) return status('في كميات مش أرقام.', 'err');
+  const title = 'مطابقة جرد - ' + J.kitchen + ' - ' + J.date + (J.when === 'before' ? ' قبل الطبخ' : ' بعد الطبخ');
+  const now = new Date();
+  const lines = [
+    ['مطابقة جرد'], ['المطبخ', J.kitchen], ['التاريخ', fmtDay(J.date)],
+    ['وقت الجرد', J.when === 'before' ? 'قبل الطبخ (الرصيد بنهاية ' + fmtDay(J.cut) + ')' : 'بعد الطبخ'],
+    ['المراقب', D.user.name + ' — ' + D.user.email],
+    ['وقت الحفظ', fmtDay(dayStr(now)) + ' ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2)],
+    [], ['الصنف', 'الوحدة', 'الرصيد الدفتري', 'الكمية الفعلية', 'الفرق', 'الحالة']];
+  const start = lines.length + 1;
+  J.items.filter(it => it.book || String(it.actual).trim() !== '').forEach((it, i) => {
+    const r = start + i;
+    lines.push([it.name, it.unit, it.book, String(it.actual).trim() === '' ? '' : num(it.actual),
+      '=IF(D' + r + '="","",D' + r + '-C' + r + ')', '=IF(D' + r + '="","لم يُجرد",IF(E' + r + '>0,"زيادة",IF(E' + r + '<0,"نقص","مطابق")))']);
+  });
+  $('jSave').disabled = true; status('جاري إنشاء الشيت على الدرايف…', 'info');
+  try {
+    const ss = await api(SAPI, { method: 'POST', body: JSON.stringify({ properties: { title, locale: 'en_US' }, sheets: [{ properties: { title: 'المطابقة', rightToLeft: true, gridProperties: { frozenRowCount: 8 } } }] }) });
+    await api(SAPI + ss.spreadsheetId + '/values/' + encodeURIComponent("'المطابقة'!A1") + '?valueInputOption=USER_ENTERED', { method: 'PUT', body: JSON.stringify({ values: lines }) });
+    const sid = ss.sheets[0].properties.sheetId;
+    await api(SAPI + ss.spreadsheetId + ':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: [
+      { repeatCell: { range: { sheetId: sid, startRowIndex: 7, endRowIndex: 8 }, cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: .12, green: .31, blue: .47 }, horizontalAlignment: 'CENTER' } }, fields: 'userEnteredFormat(textFormat,backgroundColor,horizontalAlignment)' } },
+      { repeatCell: { range: { sheetId: sid, startRowIndex: 7, endRowIndex: 8 }, cell: { userEnteredFormat: { textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true } } }, fields: 'userEnteredFormat.textFormat' } },
+      { repeatCell: { range: { sheetId: sid, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } }, fields: 'userEnteredFormat.textFormat' } },
+      { autoResizeDimensions: { dimensions: { sheetId: sid, dimension: 'COLUMNS', startIndex: 0, endIndex: 6 } } }
+    ] }) }).catch(() => {});
+    $('jLink').replaceChildren(el('a', { href: ss.spreadsheetUrl, target: '_blank' }, 'افتح شيت المطابقة'));
+    status('✅ انحفظت المطابقة بشيت على درايفك باسم "' + title + '".', 'ok');
+  } catch (e) { status('❌ ' + e.message, 'err'); }
+  finally { $('jSave').disabled = false; }
+}
+
+/* ================== تشغيل ================== */
+function setMode(m) {
+  document.querySelectorAll('.mode').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  $('fill').classList.toggle('hidden', m !== 'fill'); $('jard').classList.toggle('hidden', m !== 'jard');
+  status('', '');
+}
+async function start(interactive) {
+  try {
+    status('جاري تسجيل الدخول…', 'info');
+    await getToken(interactive);
+    status('جاري التحميل…', 'info');
+    await loadAll();
+    $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+    $('who').textContent = D.user.name + ' (' + D.user.role + ')';
+    if (!D.kitchens.length) return status('ما في مطابخ مربوطة فيك بتبويب الفريق. كلّم المدير.', 'err');
+    if (!D.dishes.length) status('شيت الوصفات فاضي.', 'info'); else status('', '');
+    ['kitchen', 'jKitchen'].forEach(id => { const s = $(id); s.replaceChildren(); D.kitchens.forEach(x => opt(s, x.name, x.name + (x.status && x.status !== 'فعال' ? ' (' + x.status + ')' : ''))); });
+    const last = LS.get('kitchen', ''); if (D.kitchens.some(x => x.name === last)) { $('kitchen').value = last; $('jKitchen').value = last; }
+    $('jDate').value = todayStr(); $('jDate').max = todayStr();
+    await refreshDates();
+  } catch (e) {
+    $('login').classList.remove('hidden'); $('app').classList.add('hidden');
+    status('❌ ' + e.message, 'err');
+  }
+}
+window.addEventListener('load', () => {
+  if (/ضع_هون/.test(CFG.CLIENT_ID)) return status('الصفحة لسا مش مربوطة بـ Google Cloud: حط الـ CLIENT_ID بأول الكود.', 'err');
+  const wait = setInterval(() => {
+    if (!window.google || !google.accounts || !google.accounts.oauth2) return;
+    clearInterval(wait); initAuth();
+    const em = LS.get('email', ''); if (em) $('loginBtn').textContent = 'دخول كـ ' + em;
+  }, 100);
+  // نافذة تسجيل الدخول لازم تنفتح من كبسة مباشرة، فبنجدّد التوكن مع أي كبسة قبل ما يخلص
+  document.addEventListener('click', () => {
+    if (tokenClient && token && Date.now() > tokenExp - 5 * 60e3 && !pendingToken) {
+      pendingToken = { resolve() {}, reject() {} };
+      tokenClient.requestAccessToken({ prompt: '', hint: LS.get('email', '') || undefined });
+    }
+  }, true);
+  $('loginBtn').onclick = () => start(true);
+  document.querySelectorAll('.mode').forEach(b => b.onclick = () => setMode(b.dataset.m));
+  $('kitchen').onchange = () => { LS.set('kitchen', $('kitchen').value); refreshDates(); };
+  $('date').onchange = reloadDay;
+  $('addDish').onclick = () => { dishes.push({ name: '', pots: '' }); renderDishes(); };
+  $('addBtn').onclick = () => { const v = $('addSel').value; if (!v) return; addRow(v, '', null, true); $('addSel').value = ''; render(); };
+  $('save').onclick = save;
+  const resetJ = () => { J = null; $('jCard').classList.add('hidden'); $('jInfo').textContent = ''; };
+  $('jKitchen').onchange = $('jDate').onchange = $('jWhen').onchange = resetJ;
+  $('jCalc').onclick = jardCalc; $('jZero').onchange = jardRender; $('jSave').onclick = jardSave;
+});
+</script>
+</body>
+</html>
